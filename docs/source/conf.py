@@ -27,7 +27,7 @@ templates_path = ['_templates']
 exclude_patterns = []
 
 html_logo = '_static/logo.svg'
-html_favicon = '_static/favico.ico'
+html_favicon = '_static/favicon.ico'
 
 html_theme_options = {
     'caption_font_family': 'Noto Sans',

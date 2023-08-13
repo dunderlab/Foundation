@@ -2,7 +2,7 @@
 FROM python:3.11
 
 LABEL image="dunderlab/python311"
-LABEL version="1.2"
+LABEL version="1.3"
 LABEL maintainer="yencardonaal@unal.edu.co"
 LABEL description=""
 LABEL project=""
@@ -25,7 +25,7 @@ RUN pip install confluent-kafka \
                 mne \
                 jupyterlab \
                 figurestream \
-                radiant-framework
-
-# Exponer el puerto 8888 para Jupyter Lab (opcional)
-EXPOSE 8888
+                radiant-framework \
+                dunderlab-foundation \
+                dunderlab-docs \
+                figurestream

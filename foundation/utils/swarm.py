@@ -10,7 +10,6 @@ class Swarm:
     def __init__(self, base_url='unix://var/run/docker.sock', advertise_addr=''):
         """Constructor"""
         self.client = docker.DockerClient(base_url=base_url)
-
         try:
             logging.warning("Starting swarm...")
             if not self.client.swarm.attrs.get('ID'):
@@ -53,21 +52,11 @@ class Swarm:
         """"""
         return [getattr(service, attr) for service in self.client.services.list()]
 
-    # # ----------------------------------------------------------------------
-    # def desribe_service(self, service, attr='name'):
-        # """"""
-        # return [getattr(service, attr) for service in self.client.services.list()]
-
     # ----------------------------------------------------------------------
     @property
     def containers(self, attr='id'):
         """"""
         return [getattr(container, attr) for container in self.client.containers.list()]
-
-    # # ----------------------------------------------------------------------
-    # def containers_get(self, attr='id'):
-        # """"""
-        # return [getattr(container, attr) for container in self.client.containers.list()]
 
     # ----------------------------------------------------------------------
     @property
@@ -99,7 +88,7 @@ class Swarm:
         return stats
 
     # ----------------------------------------------------------------------
-    def start_jupyter(self, service_name="jupyterlab-service", port=8888, restart=False):
+    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False):
         """"""
         if restart and (service_name in self.services):
             self.stop_service(service_name)
@@ -129,7 +118,10 @@ class Swarm:
                     type="volume",
                     read_only=False
                 ),
-            ]
+            ],
+            env=[
+                f"PORT={port}",
+            ],
         )
         return service_name in self.services
 
@@ -159,6 +151,7 @@ class Swarm:
                     f"KAFKA_ZOOKEEPER_CONNECT={zookeeper_service_name}:{zookeeper_port}",
                     f"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT",
                     f"KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://{kafka_service_name}:{kafka_port},PLAINTEXT_HOST://localhost:{kafka_port_external}",
+                    f"PORT={kafka_port_external}",
                 ],
             )
         else:
@@ -211,7 +204,8 @@ class Swarm:
                 "POSTGRES_PASSWORD=password",
                 "POSTGRES_USER=postgres",
                 "POSTGRES_DB=timescaledb",
-                "POSTGRES_MAX_CONNECTIONS=500"
+                "POSTGRES_MAX_CONNECTIONS=500",
+                f"PORT={port}",
             ],
             endpoint_spec=docker.types.EndpointSpec(ports={5432: port}),
             mounts=[
@@ -234,10 +228,13 @@ class Swarm:
             manager_addr = swarm_info.get('RemoteManagers')[0].get('Addr')
             return f'docker swarm join --token {worker_join_token} {manager_addr}'
 
-
-
-
-
+    # ----------------------------------------------------------------------
+    def advertise_addr(self):
+        """"""
+        swarm_info = self.client.info().get('Swarm')
+        if swarm_info and swarm_info.get('ControlAvailable'):
+            manager_addr = swarm_info.get('RemoteManagers')[0].get('Addr')
+            return manager_addr
 
 
 

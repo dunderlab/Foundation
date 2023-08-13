@@ -1,5 +1,5 @@
 from radiant.framework.server import PythonHandler
-from hci_framework.utils.swarm import Swarm
+from foundation.utils.swarm import Swarm
 
 
 admin = Swarm()

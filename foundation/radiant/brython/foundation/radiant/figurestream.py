@@ -1,4 +1,4 @@
-from hci_framework.radiant.utils import environ
+from foundation.radiant.utils import environ
 from urllib.parse import urlencode
 from datetime import datetime
 from browser import document, html
@@ -17,14 +17,12 @@ class FigureStream:
         else:
             self.port = port
 
-
         self.URL = f'http://127.0.0.1:{self.port}/figure.jpeg'
         self.query_dict = {
-            'width': '12',
-            'height': '4',
+            'width': '1000',
+            'height': '500',
             'color': 'C0',
         }
-
 
     # ----------------------------------------------------------------------
     def set(self, variable, value):
@@ -38,25 +36,53 @@ class FigureStream:
         self.query_dict['v'] = datetime.now().timestamp()
         return urlencode(self.query_dict)
 
-
     # ----------------------------------------------------------------------
     @property
     def full_path(self):
         """"""
         return f'{self.URL}?{self.query_string}'
 
+    # # ----------------------------------------------------------------------
+    # @property
+    # def container(self):
+        # """"""
+        # self.container_div = html.DIV(f'<img src="{self.full_path}"></img>')
+        # return self.container_div
+
+    # # ----------------------------------------------------------------------
+    # def update(self):
+        # """"""
+        # print(self.full_path)
+        # self.container_div.html = f'<img src="{self.full_path}"></img>'
 
     # ----------------------------------------------------------------------
     @property
     def container(self):
         """"""
-        self.container_div = html.DIV(f'<img src="{self.full_path}"></img>')
-        return self.container_div
+        self.container_div = html.DIV()
 
+        self.container_div.style = {
+
+            'background-image': f"url({self.full_path})",
+            'background-repeat': 'no-repeat',
+            'background-size': 'contain',
+            'width': '100%',
+            'height': '100%',
+            'display': 'flex',
+        }
+
+        return self.container_div
 
     # ----------------------------------------------------------------------
     def update(self):
         """"""
-        print(self.full_path)
-        self.container_div.html = f'<img src="{self.full_path}"></img>'
+        # print(self.full_path)
+        # self.container_div.html = f'<img src="{self.full_path}"></img>'
+
+        self.container_div.style = {
+
+            'background-image': f"url({self.full_path})",
+
+        }
+
 

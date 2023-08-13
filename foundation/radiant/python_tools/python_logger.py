@@ -1,5 +1,5 @@
 from radiant.framework.server import PythonHandler
-from hci_framework.utils import kafkalogs
+from foundation.utils import kafkalogs
 import logging as logging_orig
 
 

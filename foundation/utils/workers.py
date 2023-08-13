@@ -8,7 +8,7 @@ import docker
 from foundation.utils.swarm import Swarm
 from foundation.workers import select_worker
 
-WORKER_NAME = "{}-service-worker"
+WORKER_NAME = "{}-worker"
 
 
 ########################################################################
@@ -235,6 +235,9 @@ class Workers:
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
         elif os.path.exists(select_worker(worker_path)):
+            if not 'service_name' in kwargs:
+                kwargs['service_name'] = worker_path
+
             worker_path = select_worker(worker_path)
 
         if os.path.exists(os.path.join(worker_path, 'manage.py')):
@@ -243,7 +246,7 @@ class Workers:
         elif os.path.exists(os.path.join(worker_path, 'main.py')):
             with open(os.path.join(worker_path, 'main.py'), 'r') as file:
                 content = file.read()
-                if 'from hci_framework.radiant.server' in content:
+                if 'from foundation.radiant.server' in content:
                     logging.warning('Running a Brython worker')
                     return self.start_brython_worker(worker_path, **kwargs)
                 else:
