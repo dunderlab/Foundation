@@ -25,6 +25,7 @@ foundation_services = set([
     'zookeeper-logs-service',
     'timescaledb-service',
     'jupyterlab-service',
+    'ntp-service',
 ])
 
 COMMANDS = ["['q' to close]",
@@ -36,13 +37,14 @@ COMMAND_START = '[START]'
 COMMAND_RESTART = '[RESTART]'
 COMMAND_STOP = '[STOP]'
 
-system_workers = set([WORKER_NAME.format(worker) for worker in list_workers()])
+system_workers = set([WORKER_NAME.format(worker).replace('_', '-') for worker
+                      in list_workers()])
 
 
 ########################################################################
 class Stats:
     """"""
-    COL = [0, 16, 40 + 5 + 15, 53 + 5 + 15, 62 + 10 + 15, 84 + 10 + 15, 101 + 10 + 15, 139 + 10 + 15]
+    COL = [0, 16, 60, 73, 87, 109, 126, 164]
     COL_NAMES = ["", "RUNNING", "NODE", "SERVICE ID", "CONTAINER ID", "IMAGE", "URL"]
 
     # ----------------------------------------------------------------------

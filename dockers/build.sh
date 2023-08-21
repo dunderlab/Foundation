@@ -31,14 +31,4 @@ fi
 # Construir la imagen
 docker build -t "$IMAGE_NAME":"$VERSION" -f "$DOCKERFILE_NAME" .
 
-# Etiquetar la imagen con "latest"
-docker tag "$IMAGE_NAME":"$VERSION" "$IMAGE_NAME":latest
-
-# Iniciar sesión en Docker Hub
-docker login
-
-# Subir la imagen etiquetada a Docker Hub
-docker push "$IMAGE_NAME":"$VERSION"
-docker push "$IMAGE_NAME":latest
-
 cd ..

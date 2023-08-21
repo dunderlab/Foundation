@@ -88,7 +88,32 @@ class Swarm:
         return stats
 
     # ----------------------------------------------------------------------
-    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False):
+    def start_ntp(self, service_name="ntp-service", port=1234, restart=False, tag='1.0'):
+        """"""
+        if restart and (service_name in self.services):
+            self.stop_service(service_name)
+            logging.warning(f"Restarting service '{service_name}'")
+        elif service_name in self.services:
+            logging.warning(f"Service '{service_name}' already exist")
+            return
+
+        service = self.client.services.create(
+            image=f'dunderlab/ntp:{tag}',
+            name=service_name,
+            networks=self.networks,
+            endpoint_spec={
+                'Ports': [
+                    {'Protocol': 'udp', 'PublishedPort': port, 'TargetPort': 123},
+                ]},
+            env=[
+                f"PORT={port}",
+            ],
+        )
+
+        return service_name in self.services
+
+    # ----------------------------------------------------------------------
+    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False, tag='1.4'):
         """"""
         if restart and (service_name in self.services):
             self.stop_service(service_name)
@@ -99,13 +124,15 @@ class Swarm:
 
         volume_name = self.create_volume(service_name)
         service = self.client.services.create(
-            image="dunderlab/python311:latest",
+            image=f"dunderlab/python311:{tag}",
             name=service_name,
             networks=self.networks,
-            command=["jupyter", "lab", "--notebook-dir='/app'",
-                     "--ip=0.0.0.0", "--port=8888",
-                     "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''"],
-            endpoint_spec=docker.types.EndpointSpec(ports={8888: port}),
+            command=[
+                "/bin/bash", "-c",
+                "ntpd -g && jupyter lab --notebook-dir='/app' --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token='' --NotebookApp.password=''"
+            ],
+            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': 8888, 'TargetPort': port},
+                                     ]},
             mounts=[
                 docker.types.Mount(
                     type='bind',
@@ -121,6 +148,7 @@ class Swarm:
             ],
             env=[
                 f"PORT={port}",
+                # "NTP_SERVER=ntp-service",
             ],
         )
         return service_name in self.services
@@ -129,7 +157,7 @@ class Swarm:
     def start_kafka(self, kafka_service_name="kafka-service",
                     zookeeper_service_name="zookeeper-service",
                     kafka_port=9092, kafka_port_external=19092,
-                    zookeeper_port=2181, restart=False):
+                    zookeeper_port=2181, restart=False, tag='1.1'):
         """"""
         if restart and (kafka_service_name in self.services):
             self.stop_service(kafka_service_name)
@@ -141,12 +169,13 @@ class Swarm:
 
         if not kafka_service_name in self.services:
             kafka_service = self.client.services.create(
-                image="dunderlab/kafka:latest",
+                image=f"dunderlab/kafka:{tag}",
                 # restart_policy=docker.types.RestartPolicy(condition='any'),
                 name=kafka_service_name,
                 networks=self.networks,
-                endpoint_spec=docker.types.EndpointSpec(ports={kafka_port: kafka_port,
-                                                               kafka_port_external: kafka_port_external, }),
+                endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': kafka_port, 'TargetPort': kafka_port},
+                                         {'Protocol': 'tcp', 'PublishedPort': kafka_port_external, 'TargetPort': kafka_port_external},
+                                         ]},
                 env=[
                     f"KAFKA_ZOOKEEPER_CONNECT={zookeeper_service_name}:{zookeeper_port}",
                     f"KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT",
@@ -159,10 +188,11 @@ class Swarm:
 
         if not zookeeper_service_name in self.services:
             zookeeper_service = self.client.services.create(
-                image="dunderlab/zookeeper:latest",
+                image=f"dunderlab/zookeeper:{tag}",
                 name=zookeeper_service_name,
                 networks=self.networks,
-                endpoint_spec=docker.types.EndpointSpec(ports={zookeeper_port: zookeeper_port}),
+                endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': zookeeper_port, 'TargetPort': zookeeper_port},
+                                         ]},
                 env=[
                     f"ZOOKEEPER_CLIENT_PORT={zookeeper_port}",
                 ],
@@ -177,12 +207,12 @@ class Swarm:
     def start_kafka_logs(self, kafka_service_name="kafka-logs-service",
                          zookeeper_service_name="zookeeper-logs-service",
                          kafka_port=9093, kafka_port_external=19093,
-                         zookeeper_port=2182, restart=False):
+                         zookeeper_port=2182, restart=False, tag='1.1'):
         """"""
-        return self.start_kafka(kafka_service_name, zookeeper_service_name, kafka_port, kafka_port_external, zookeeper_port, restart)
+        return self.start_kafka(kafka_service_name, zookeeper_service_name, kafka_port, kafka_port_external, zookeeper_port, restart, tag)
 
     # ----------------------------------------------------------------------
-    def start_timescaledb(self, service_name="timescaledb-service", port=5432, volume_name=None, restart=False):
+    def start_timescaledb(self, service_name="timescaledb-service", port=5432, volume_name=None, restart=False, tag='latest-pg15'):
         """"""
         if restart and (service_name in self.services):
             self.stop_service(service_name)
@@ -197,7 +227,7 @@ class Swarm:
             volume_name = self.create_volume(volume_name)
 
         timescaledb_service = self.client.services.create(
-            image="timescale/timescaledb:latest-pg15",
+            image=f"timescale/timescaledb:{tag}",
             name=service_name,
             networks=self.networks,
             env=[
@@ -207,7 +237,8 @@ class Swarm:
                 "POSTGRES_MAX_CONNECTIONS=500",
                 f"PORT={port}",
             ],
-            endpoint_spec=docker.types.EndpointSpec(ports={5432: port}),
+            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': 5432, 'TargetPort': port},
+                                     ]},
             mounts=[
                 docker.types.Mount(
                     target='/var/lib/postgresql/data',

@@ -2,7 +2,7 @@
 FROM python:3.11
 
 LABEL image="dunderlab/python311"
-LABEL version="1.3"
+LABEL version="1.4"
 LABEL maintainer="yencardonaal@unal.edu.co"
 LABEL description=""
 LABEL project=""
@@ -12,9 +12,8 @@ LABEL license="BSD 2-Clause"
 # Establecer un directorio de trabajo
 WORKDIR /app
 
-ENV PIP_ROOT_USER_ACTION=ignore
-
 # Instalar cualquier dependencia necesaria.
+ENV PIP_ROOT_USER_ACTION=ignore
 RUN pip install confluent-kafka \
                 docker \
                 numpy \
@@ -27,5 +26,12 @@ RUN pip install confluent-kafka \
                 figurestream \
                 radiant-framework \
                 dunderlab-foundation \
+                dunderlab-timescaledbapp \
                 dunderlab-docs \
-                figurestream
+                figurestream \
+                ntplib
+
+# Configure NTP
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y ntp
+COPY ntp.conf /etc/ntpsec/

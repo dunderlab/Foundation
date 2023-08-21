@@ -2,7 +2,7 @@
 FROM confluentinc/cp-kafka:latest
 
 LABEL image="dunderlab/kafka"
-LABEL version="1.0"
+LABEL version="1.1"
 LABEL maintainer="yencardonaal@unal.edu.co"
 LABEL description=""
 LABEL project=""

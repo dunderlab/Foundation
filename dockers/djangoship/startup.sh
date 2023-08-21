@@ -25,4 +25,5 @@ if [ -f "./startup.sh" ]; then
     . ./startup.sh
 fi
 
+ntpd
 httpd -D FOREGROUND

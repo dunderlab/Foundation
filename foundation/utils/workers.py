@@ -49,7 +49,7 @@ class Workers:
                 self.swarm.stop_service(worker)
 
     # ----------------------------------------------------------------------
-    def start_django_worker(self, worker_path, service_name=None, port=None, restart=False, version='1.1', endpoint=''):
+    def start_django_worker(self, worker_path, service_name=None, port=None, restart=False, tag='1.2', endpoint=''):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -79,10 +79,11 @@ class Workers:
             return
 
         service = self.swarm.client.services.create(
-            image=f"dunderlab/djangoship:{version}",
+            image=f"dunderlab/djangoship:{tag}",
             name=service_name,
             networks=self.swarm.networks,
-            endpoint_spec=docker.types.EndpointSpec(ports={port: 80}),
+            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port, 'TargetPort': 80},
+                                     ]},
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -107,7 +108,7 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_brython_worker(self, worker_path, service_name=None, port_stream=None, port_radiant=None, run="main.py", restart=False, version='1.2'):
+    def start_brython_worker(self, worker_path, service_name=None, port_stream=None, port_radiant=None, run="main.py", restart=False, tag='1.4'):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -134,19 +135,18 @@ class Workers:
             return
 
         service = self.swarm.client.services.create(
-            image=f"dunderlab/python311:{version}",
+            image=f"dunderlab/python311:{tag}",
             name=service_name,
             networks=self.swarm.networks,
             command=[
                 "/bin/bash", "-c",
-                f"if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && python /app/worker/{run}",
+                # f"if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && startup.sh && python /app/worker/{run}",
+                f"ntpd -g && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
+
             ],
-            endpoint_spec=docker.types.EndpointSpec(
-                ports={
-                    port_radiant: port_radiant,
-                    port_stream: port_stream,
-                }
-            ),
+            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port_radiant, 'TargetPort': port_radiant},
+                                     {'Protocol': 'tcp', 'PublishedPort': port_stream, 'TargetPort': port_stream},
+                                     ]},
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -171,7 +171,7 @@ class Workers:
         return port_radiant
 
     # ----------------------------------------------------------------------
-    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, version='1.2'):
+    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.4'):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -196,18 +196,16 @@ class Workers:
             return
 
         service = self.swarm.client.services.create(
-            image=f"dunderlab/python311:{version}",
+            image=f"dunderlab/python311:{tag}",
             name=service_name,
             networks=self.swarm.networks,
             command=[
                 "/bin/bash", "-c",
-                f"if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && python /app/worker/{run}",
+                f"ntpd -g && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
+                # f"if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && startup.sh && python /app/worker/{run}",
             ],
-            endpoint_spec=docker.types.EndpointSpec(
-                ports={
-                    port: port,
-                }
-            ),
+            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port, 'TargetPort': port},
+                                     ]},
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -237,8 +235,8 @@ class Workers:
         elif os.path.exists(select_worker(worker_path)):
             if not 'service_name' in kwargs:
                 kwargs['service_name'] = worker_path
-
             worker_path = select_worker(worker_path)
+            kwargs['service_name'] = kwargs['service_name'].replace('_', '-')
 
         if os.path.exists(os.path.join(worker_path, 'manage.py')):
             logging.warning('Running a Django worker')
