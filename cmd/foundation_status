@@ -15,7 +15,6 @@ parser = argparse.ArgumentParser(description="Start an HCI worker.")
 parser.add_argument('-a', '--advertise_addr', default=None, help="Advertise address.")
 args = parser.parse_args()
 
-
 workers = Workers(swarm_advertise_addr=args.advertise_addr)
 
 foundation_services = set([
@@ -40,6 +39,17 @@ COMMAND_STOP = '[STOP]'
 system_workers = set([WORKER_NAME.format(worker).replace('_', '-') for worker
                       in list_workers()])
 
+extra_args = {
+    'start_timescaledb_api_worker': {'service_name': 'timescaledb_api',
+                                     'image': 'djangorun',
+                                     'endpoint': '/timescaledbapp/',
+                                     'port': 51102,
+                                     'restart': True,
+                                     },
+}
+
+CONTINUE = True
+
 
 ########################################################################
 class Stats:
@@ -50,13 +60,13 @@ class Stats:
     # ----------------------------------------------------------------------
     def __init__(self, stdscr):
         """Constructor"""
+        global CONTINUE
         self.row_services = {}
         curses.resizeterm(100, 1000)
         curses.curs_set(0)
         stdscr.nodelay(True)
         curses.mousemask(1)
         self.stdscr = stdscr
-        self.continue_ = True
 
         curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
@@ -64,7 +74,7 @@ class Stats:
         curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)
         curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_BLACK)
 
-        while True:
+        while CONTINUE:
             self.stdscr.clear()
             self.stdscr.addstr(0, 0, '-' * 80)
             start = self.update_services_stats(foundation_services, name='FOUNDATION SERVICES', start=1)
@@ -90,7 +100,7 @@ class Stats:
                 self.process_event(command, y, worker)
 
             elif event == ord('q'):
-                self.continue_ = False
+                CONTINUE = False
                 break
 
             elif event == ord('k'):
@@ -121,16 +131,17 @@ class Stats:
         elif command in [COMMAND_RESTART, COMMAND_START]:
 
             method_service = f'start_{service_name.replace("-service",  "").replace("-",  "_")}'
-            worker_name = service_name.replace("-worker", "")
+            # service_name = service_name.replace("-worker", "").replace("-", "_")
+            worker_name = service_name.replace("-worker", "").replace("-", "_")
 
             if hasattr(workers.swarm, method_service):
-                getattr(workers.swarm, method_service)(restart=True)
+                getattr(workers.swarm, method_service)(**extra_args.get(method_service, {'restart': True, }))
 
             elif worker_name in workers.swarm.services or os.path.exists(select_worker(worker_name)):
-                workers.start_worker(worker_name, restart=True)
+                workers.start_worker(worker_name, **extra_args.get(method_service, {'restart': True, }))
 
-            elif service_name in workers.swarm.services:
-                workers.start_worker(worker, service_name=worker_name, restart=True)
+            elif worker_name in workers.swarm.services:
+                workers.start_worker(worker, service_name=worker_name, **extra_args.get(method_service, {'restart': True, }))
 
     # ----------------------------------------------------------------------
     def write_row(self, items, row=0, m=0):
@@ -238,12 +249,14 @@ class Stats:
 
 
 if __name__ == '__main__':
-
-    # while True:
-    try:
-        curses.wrapper(Stats)
-    except Exception as e:
-        sys.exit()
+    while True:
+        try:
+            curses.wrapper(Stats)
+            if not CONTINUE:
+                break
+        except Exception as e:
+            pass
+    sys.exit()
 
 
 

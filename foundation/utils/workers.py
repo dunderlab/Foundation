@@ -49,8 +49,13 @@ class Workers:
                 self.swarm.stop_service(worker)
 
     # ----------------------------------------------------------------------
-    def start_django_worker(self, worker_path, service_name=None, port=None, restart=False, tag='1.2', endpoint=''):
+    def start_django_worker(self, worker_path, service_name=None, port=None, restart=False, image='djangoship', tag=None, endpoint=''):
         """"""
+        if tag == None and image == 'djangoship':
+            tag = '1.3'
+        if tag == None and image == 'djangorun':
+            tag = '1.0'
+
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
             app_name = os.path.split(worker_path)[-1]
@@ -79,7 +84,7 @@ class Workers:
             return
 
         service = self.swarm.client.services.create(
-            image=f"dunderlab/djangoship:{tag}",
+            image=f"dunderlab/{image}:{tag}",
             name=service_name,
             networks=self.swarm.networks,
             endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port, 'TargetPort': 80},
@@ -88,7 +93,7 @@ class Workers:
                 docker.types.Mount(
                     type="bind",
                     source=worker_path,
-                    target="/app/djangoship",
+                    target=f"/app/{image}",
                     read_only=False,
                 ),
                 docker.types.Mount(
@@ -108,7 +113,7 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_brython_worker(self, worker_path, service_name=None, port_stream=None, port_radiant=None, run="main.py", restart=False, tag='1.4'):
+    def start_brython_worker(self, worker_path, service_name=None, port_stream=None, port=None, run="main.py", restart=False, tag='1.4'):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -118,8 +123,8 @@ class Workers:
 
         if port_stream is None:
             port_stream = self.get_open_port()
-        if port_radiant is None:
-            port_radiant = self.get_open_port()
+        if port is None:
+            port = self.get_open_port()
 
         if service_name is None:
             service_name = self.gen_worker_name()
@@ -144,7 +149,7 @@ class Workers:
                 f"ntpd -g && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
 
             ],
-            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port_radiant, 'TargetPort': port_radiant},
+            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port, 'TargetPort': port},
                                      {'Protocol': 'tcp', 'PublishedPort': port_stream, 'TargetPort': port_stream},
                                      ]},
             mounts=[
@@ -162,13 +167,13 @@ class Workers:
             ],
             env={
                 "STREAM": port_stream,
-                "RADIANT": port_radiant,
-                "PORT": port_radiant,
+                "RADIANT": port,
+                "PORT": port,
                 "SERVICE_NAME": service_name_env,
             },
         )
 
-        return port_radiant
+        return port
 
     # ----------------------------------------------------------------------
     def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.4'):

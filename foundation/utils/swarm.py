@@ -47,6 +47,23 @@ class Swarm:
         return volume_name
 
     # ----------------------------------------------------------------------
+    def delete_volume(self, volume_name):
+        """"""
+        logging.warning("Deleting volumes...")
+        try:
+            # Fetch the volume
+            volume = self.client.volumes.get(volume_name)
+            # Remove the volume
+            volume.remove()
+            logging.info(f"Volume '{volume_name}' has been deleted.")
+        except docker.errors.NotFound:
+            logging.warning(f"Volume '{volume_name}' does not exist.")
+        except docker.errors.APIError as e:
+            logging.error(f"An error occurred while attempting to remove the volume: {e}")
+
+        return None
+
+    # ----------------------------------------------------------------------
     @property
     def services(self, attr='name'):
         """"""
@@ -88,7 +105,7 @@ class Swarm:
         return stats
 
     # ----------------------------------------------------------------------
-    def start_ntp(self, service_name="ntp-service", port=1234, restart=False, tag='1.0'):
+    def start_ntp(self, service_name="ntp-service", port=123, restart=False, tag='1.0'):
         """"""
         if restart and (service_name in self.services):
             self.stop_service(service_name)
@@ -113,7 +130,7 @@ class Swarm:
         return service_name in self.services
 
     # ----------------------------------------------------------------------
-    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False, tag='1.4'):
+    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False, tag='1.5'):
         """"""
         if restart and (service_name in self.services):
             self.stop_service(service_name)
@@ -129,7 +146,7 @@ class Swarm:
             networks=self.networks,
             command=[
                 "/bin/bash", "-c",
-                "ntpd -g && jupyter lab --notebook-dir='/app' --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token='' --NotebookApp.password=''"
+                "jupyter lab --notebook-dir='/app' --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token='' --NotebookApp.password=''"
             ],
             endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': 8888, 'TargetPort': port},
                                      ]},

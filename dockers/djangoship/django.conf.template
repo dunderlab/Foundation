@@ -9,7 +9,7 @@ WSGIPythonPath /app/venv311/lib/python3.11/site-packages/
     ServerAdmin yencardonaal@unal.edu.co
 
     # Enable special modules like Scipy
-    WSGIApplicationGroup %{{GLOBAL}}
+    WSGIApplicationGroup %{GLOBAL}
 
     # Pass authorization information through to the WSGI application
     WSGIPassAuthorization On

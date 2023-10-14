@@ -10,14 +10,17 @@ args = parser.parse_args()
 workers = Workers(swarm_advertise_addr=args.advertise_addr)
 workers.stop_all_workers()
 
-# # Basic services
-# workers.swarm.start_ntp(restart=True)
-# workers.swarm.start_jupyterlab(restart=True)
-# workers.swarm.start_kafka(restart=True)
-# workers.swarm.start_kafka_logs(restart=True)
-# workers.swarm.start_timescaledb(restart=True)
 
-# # Basic workers
-workers.start_worker('timescaledb_api', service_name='timescaledb_api', endpoint='/timescaledbapp/', restart=True)
-workers.start_worker('main_app', service_name='main_app', restart=True)
+# Basic services
+workers.swarm.start_ntp(restart=True)
+workers.swarm.start_jupyterlab(restart=True)
+workers.swarm.start_kafka(restart=True)
+workers.swarm.start_kafka_logs(restart=True)
+workers.swarm.start_timescaledb(restart=True)
+# workers.swarm.delete_volume('timescaledb-service-volume')
+
+
+# Basic workers
+# workers.start_worker('main_app', service_name='main_app', port=51101, restart=True)
+workers.start_worker('timescaledb_api', service_name='timescaledb_api', image='djangorun', endpoint='/timescaledbapp/', port=51102, restart=True)
 

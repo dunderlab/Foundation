@@ -1,6 +1,6 @@
+dunderlab-timescaledbapp
 djangorestframework
 djangorestframework-simplejwt
-dunderlab-timescaledbapp
 markdown
 django-filter
 django_extensions
