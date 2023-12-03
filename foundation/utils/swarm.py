@@ -130,7 +130,7 @@ class Swarm:
         return service_name in self.services
 
     # ----------------------------------------------------------------------
-    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False, tag='1.5'):
+    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False, tag='1.6'):
         """"""
         if restart and (service_name in self.services):
             self.stop_service(service_name)

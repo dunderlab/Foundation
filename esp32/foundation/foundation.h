@@ -30,8 +30,9 @@ void transmissionTask(void* parameter);
 // Data structures
 struct AcquiredData {
     std::map<std::string, std::vector<int32_t>> channels;
-    std::vector<int> timestamps;
+    std::vector<unsigned long long> timestamps; 
 };
+
 
 // Global variables
 extern QueueHandle_t dataQueue;

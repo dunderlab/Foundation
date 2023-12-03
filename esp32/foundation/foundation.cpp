@@ -78,7 +78,7 @@ void transmissionTask(void* parameter) {
         JsonObject values = doc.createNestedObject("values");
         JsonArray timestampsArray = doc.createNestedArray("timestamps");
     
-        for (int value : data.timestamps) {
+        for (unsigned long long value : data.timestamps) {
           timestampsArray.add(value);
         }
     
