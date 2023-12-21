@@ -15,14 +15,16 @@ sphinx:
 
 # Optionally set the version of Python and requirements required to build your docs
 python:
-  version: 3.10
   install:
     - requirements: docs/requirements
 
+
+# Set the version of Python and other tools you might need
 build:
-  image: testing
+  os: ubuntu-22.04
+  tools:
+    python: "3.11"
 
 formats:
   - epub
-  - pdf
 
