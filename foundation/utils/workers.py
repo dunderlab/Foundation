@@ -49,7 +49,7 @@ class Workers:
                 self.swarm.stop_service(worker)
 
     # ----------------------------------------------------------------------
-    def start_django_worker(self, worker_path, service_name=None, port=None, restart=False, image='djangoship', tag=None, endpoint=''):
+    def start_django_worker(self, worker_path, service_name=None, port=None, restart=False, image='djangoship', tag=None, endpoint='', env={}):
         """"""
         if tag == None and image == 'djangoship':
             tag = '1.3'
@@ -107,13 +107,14 @@ class Workers:
                 "PORT": port,
                 "ENDPOINT": endpoint,
                 "SERVICE_NAME": service_name_env,
+                **env,
             },
         )
 
         return port
 
     # ----------------------------------------------------------------------
-    def start_brython_worker(self, worker_path, service_name=None, port_stream=None, port=None, run="main.py", restart=False, tag='1.4'):
+    def start_brython_worker(self, worker_path, service_name=None, port_stream=None, port=None, run="main.py", restart=False, tag='1.4', env={}):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -170,13 +171,14 @@ class Workers:
                 "RADIANT": port,
                 "PORT": port,
                 "SERVICE_NAME": service_name_env,
+                **env,
             },
         )
 
         return port
 
     # ----------------------------------------------------------------------
-    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.4'):
+    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.4', env={}):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -227,6 +229,7 @@ class Workers:
             env={
                 "PORT": port,
                 "SERVICE_NAME": service_name_env,
+                **env,
             },
         )
 
