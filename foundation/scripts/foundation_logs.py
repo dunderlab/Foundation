@@ -2,10 +2,12 @@
 
 from colorama import init
 from colorama import Fore, Back
-from confluent_kafka import Consumer
+from chaski.streamer import ChaskiStreamer
 import argparse
 import logging
-from datetime import datetime
+# from datetime import datetime
+
+import asyncio
 
 from foundation.utils import Workers
 
@@ -20,7 +22,7 @@ parser.add_argument(
     help="Topics to be logged.",
 )
 parser.add_argument(
-    '-l', '--loglevel', default='DEBUG', help="Set the logging level"
+    '-l', '--loglevel', default='NOTSET', help="Set the logging level"
 )
 parser.add_argument(
     '-a', '--advertise_addr', default=None, help="Advertise address."
@@ -29,45 +31,55 @@ parser.add_argument(
 args = parser.parse_args()
 
 logging.basicConfig()
-logging.getLogger("confluent_kafka").setLevel(logging.CRITICAL + 1)
 
 workers = Workers(swarm_advertise_addr=args.advertise_addr)
 
 
-########################################################################
-class Logs:
+# ----------------------------------------------------------------------
+async def run():
     """"""
 
-    # ----------------------------------------------------------------------
-    def __init__(self):
-        """Constructor"""
-        conf = {
-            'bootstrap.servers': f'{args.advertise_addr}:19093',
-            'group.id': f'foundation_logs',
-            'auto.offset.reset': 'latest',
-        }
+    consumer = ChaskiStreamer(
+        subscriptions=['logs'], run=False
+    )
 
-        self.consumer = Consumer(conf)
-        self.subscribe()
+    await consumer.connect('127.0.0.1', port=51114)
+    asyncio.create_task(consumer.run())
 
-        try:
-            self.consume()
-        except KeyboardInterrupt:
-            pass
+    if args.topic == ['ALL']:
+        topics = list(
+            filter(
+                lambda topic: not topic.startswith('__'),
+                consumer.subscriptions,
+            )
+        )
+        topics = topics + workers.swarm.services
+    else:
+        topics = args.topic
 
-    # ----------------------------------------------------------------------
-    def consume(self):
-        """"""
-        while True:
-            msg = self.consumer.poll(timeout=1)
+    if topics:
+        consumer.subscribe(topics)
+    print(Back.CYAN + Fore.BLACK + f'Topics: {", ".join(topics)}')
+
+    async with consumer as message_queue:
+        async for msg in message_queue:
 
             if not msg:
                 continue
 
-            msg = f'{msg.value().decode("utf-8").replace("@", ": ")}'
+            if msg.topic == 'logs':
+                print(msg.data)
+                continue
+
+
+            # print('+'+msg.data)
+
+            msg = f'{msg.data.replace("@", ": ")}'
 
             log_level = getattr(logging, args.loglevel)
             msg_level = getattr(logging, msg.split(':')[0], -1)
+
+            # print('+'+msg + f" <{msg_level}-{log_level}>")
 
             if msg_level < log_level:
                 continue
@@ -85,30 +97,11 @@ class Logs:
             else:
                 print(msg)
 
-    # ----------------------------------------------------------------------
-    def subscribe(self):
-        """"""
-        if args.topic == ['ALL']:
-            topics = list(
-                filter(
-                    lambda topic: not topic.startswith('__'),
-                    self.consumer.list_topics().topics.keys(),
-                )
-            )
-            topics = topics + workers.swarm.services
-        else:
-            topics = args.topic
-
-        if topics:
-            self.consumer.subscribe(topics)
-
-        print(Back.CYAN + Fore.BLACK + f'Topics: {", ".join(topics)}')
-
 
 # ----------------------------------------------------------------------
 def main():
     """"""
-    Logs()
+    asyncio.run(run())
 
 
 if __name__ == '__main__':
