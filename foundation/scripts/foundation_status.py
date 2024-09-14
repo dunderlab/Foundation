@@ -35,7 +35,7 @@ COMMANDS = [
     "['q' to close]",
     "['k' to kill all services]",
     "['l' to kill all workers]",
-    "['s' to run Foundation]",
+    # "['s' to run Foundation]",
 ]
 COMMAND_START = '[START]'
 COMMAND_RESTART = '[RESTART]'
@@ -57,10 +57,12 @@ extra_args = {
         'restart': True,
     },
 
-    'start_chaski_root_worker': {'port': 851110,},
-    'start_chaski_ca_worker': {'port': 851111,},
-    'start_chaski_remote_worker': {'port': 851112,},
-    'start_chaski2api_worker': {'port': 851113,},
+    'start_chaski_root_worker': {'port': 51110,},
+    'start_chaski_ca_worker': {'port': 51111,},
+    'start_chaski_remote_worker': {'port': 51112,},
+    'start_chaski2api_worker': {'port': 51113,},
+    'start_chaski_logger_root_worker': {'port': 51114,},
+    'start_chaski_api_logger_worker': {'port': 51115,},
 
 }
 
@@ -152,8 +154,8 @@ class Stats:
             elif event == ord('l'):
                 workers.stop_all_workers()
 
-            elif event == ord('s'):
-                os.system('foundation_start > /dev/null 2>&1')
+            # elif event == ord('s'):
+            #     os.system('foundation_start > /dev/null 2>&1')
 
     # ----------------------------------------------------------------------
     def process_event(self, command, row, worker):
@@ -234,6 +236,11 @@ class Stats:
                     color = curses.color_pair(4)
                 else:
                     color = curses.color_pair(0)
+
+            elif col == 126 and not item in ['IMAGE', '----']:
+                images = workers.swarm.client.images.list()
+                if not any(item in tag for image in images for tag in image.tags):
+                    color = curses.color_pair(1)
             else:
                 color = curses.color_pair(0)
 
