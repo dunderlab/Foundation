@@ -18,3 +18,26 @@ def list_workers():
             workers.append(item)
     return workers
 
+
+
+########################################################################
+class LazyWorkers:
+    """"""
+
+    # ----------------------------------------------------------------------
+    def __init__(self, workers):
+        """"""
+        self.workers = workers
+
+
+    # ----------------------------------------------------------------------
+    def start_timescaledb_api(self, port=51102, restart=False):
+        """"""
+        return self.workers.start_worker(
+            'timescaledb_api',
+            service_name='timescaledb_api',
+            image='djangorun',
+            endpoint='/timescaledbapp/',
+            port=port,
+            restart=restart,
+        )

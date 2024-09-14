@@ -48,4 +48,4 @@ class BareMinimum(FrameworkAPI):
 
 
 if __name__ == '__main__':
-    BareMinimum()
+    BareMinimum(logs=False)

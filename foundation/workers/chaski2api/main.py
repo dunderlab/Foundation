@@ -27,7 +27,7 @@ async def run():
     consumer = ChaskiStreamer(
         ip='0.0.0.0',
         port=51113,
-        name='Foudation Chaski TimeScaleDB-API',
+        name='Foundation Chaski TimeScaleDB-API',
         run=False,
         subscriptions=['timescaledb-api'],
     )
