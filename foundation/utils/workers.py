@@ -107,6 +107,7 @@ class Workers:
                 "PORT": port,
                 "ENDPOINT": endpoint,
                 "SERVICE_NAME": service_name_env,
+                "WORKER_NAME": service_name,
                 **env,
             },
         )
@@ -114,7 +115,7 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_brython_worker(self, worker_path, service_name=None, port_stream=None, port=None, run="main.py", restart=False, tag='1.4', env={}):
+    def start_brython_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.6', env={}, request_ports={}):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -122,8 +123,6 @@ class Workers:
             service_name = WORKER_NAME.format(worker_path.replace("_", "-"))
             worker_path = select_worker(worker_path)
 
-        if port_stream is None:
-            port_stream = self.get_open_port()
         if port is None:
             port = self.get_open_port()
 
@@ -140,6 +139,15 @@ class Workers:
             logging.warning(f"Service '{service_name}' already exist")
             return
 
+        endpoint_spec_ports = []
+        env_ports = {}
+        for port_env in request_ports:
+            port_ = request_ports[port_env]
+            if port_ is None:
+                port_ = self.get_open_port()
+            endpoint_spec_ports.append({'Protocol': 'tcp', 'PublishedPort': port_, 'TargetPort': port_})
+            env_ports[port_env] = port_
+
         service = self.swarm.client.services.create(
             image=f"dunderlab/python311:{tag}",
             name=service_name,
@@ -151,7 +159,7 @@ class Workers:
 
             ],
             endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port, 'TargetPort': port},
-                                     {'Protocol': 'tcp', 'PublishedPort': port_stream, 'TargetPort': port_stream},
+                                     *endpoint_spec_ports,
                                      ]},
             mounts=[
                 docker.types.Mount(
@@ -167,10 +175,12 @@ class Workers:
                 ),
             ],
             env={
-                "STREAM": port_stream,
+                # "STREAM": port_stream,
                 "RADIANT": port,
                 "PORT": port,
                 "SERVICE_NAME": service_name_env,
+                "WORKER_NAME": service_name,
+                **env_ports,
                 **env,
             },
         )
@@ -178,7 +188,7 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.4', env={}):
+    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.6', env={}):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -229,6 +239,7 @@ class Workers:
             env={
                 "PORT": port,
                 "SERVICE_NAME": service_name_env,
+                "WORKER_NAME": service_name,
                 **env,
             },
         )
