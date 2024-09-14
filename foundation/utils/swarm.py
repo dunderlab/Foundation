@@ -130,7 +130,7 @@ class Swarm:
         return service_name in self.services
 
     # ----------------------------------------------------------------------
-    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False, tag='1.6'):
+    def start_jupyterlab(self, service_name="jupyterlab-service", port=8888, restart=False, tag='1.6', volume_name=None):
         """"""
         if restart and (service_name in self.services):
             self.stop_service(service_name)
@@ -139,7 +139,11 @@ class Swarm:
             logging.warning(f"Service '{service_name}' already exist")
             return
 
-        volume_name = self.create_volume(service_name)
+        if volume_name is None:
+            volume_name = self.create_volume(service_name)
+        else:
+            volume_name = self.create_volume(volume_name)
+
         service = self.client.services.create(
             image=f"dunderlab/python311:{tag}",
             name=service_name,
