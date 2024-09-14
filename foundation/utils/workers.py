@@ -115,7 +115,7 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_brython_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.0', env={}, request_ports={}):
+    def start_brython_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.1', env={}, request_ports={}):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -188,7 +188,7 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.0', env={}):
+    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.1', env={}):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
