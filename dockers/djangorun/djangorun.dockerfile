@@ -1,7 +1,7 @@
 FROM archlinux:base-devel
 
 LABEL image="dunderlab/djangorun"
-LABEL version="1.0"
+LABEL version="1.1"
 LABEL maintainer="yencardonaal@unal.edu.co"
 LABEL description=""
 LABEL project=""
@@ -19,8 +19,8 @@ RUN mkdir /etc/djangorun/ \
 
 WORKDIR /app
 
-RUN python -m venv venv311 \
-    && source venv311/bin/activate \
+RUN python -m venv venv_python \
+    && source venv_python/bin/activate \
     && pip install django django-filter django_extensions psycopg2 channels djangorestframework \
     && deactivate
 

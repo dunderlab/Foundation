@@ -52,9 +52,9 @@ class Workers:
     def start_django_worker(self, worker_path, service_name=None, port=None, restart=False, image='djangoship', tag=None, endpoint='', env={}):
         """"""
         if tag == None and image == 'djangoship':
-            tag = '1.3'
+            tag = '1.4'
         if tag == None and image == 'djangorun':
-            tag = '1.0'
+            tag = '1.1'
 
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -115,7 +115,7 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_brython_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.6', env={}, request_ports={}):
+    def start_brython_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.0', env={}, request_ports={}):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -149,7 +149,7 @@ class Workers:
             env_ports[port_env] = port_
 
         service = self.swarm.client.services.create(
-            image=f"dunderlab/python311:{tag}",
+            image=f"dunderlab/python312:{tag}",
             name=service_name,
             networks=self.swarm.networks,
             command=[
@@ -188,7 +188,7 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.6', env={}):
+    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.0', env={}):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -213,7 +213,7 @@ class Workers:
             return
 
         service = self.swarm.client.services.create(
-            image=f"dunderlab/python311:{tag}",
+            image=f"dunderlab/python312:{tag}",
             name=service_name,
             networks=self.swarm.networks,
             command=[

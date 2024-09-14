@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /app/venv311/bin/activate
+source /app/venv_python/bin/activate
 if [ -f "/app/djangorun/requirements.txt" ]; then
     pip install --no-cache-dir -r /app/djangorun/requirements.txt
 fi

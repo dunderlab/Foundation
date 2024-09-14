@@ -1,6 +1,6 @@
-SetEnv PATH /app/venv311/bin:$PATH
-WSGIPythonHome /app/venv311/
-WSGIPythonPath /app/venv311/lib/python3.11/site-packages/
+SetEnv PATH /app/venv_python/bin:$PATH
+WSGIPythonHome /app/venv_python/
+WSGIPythonPath /app/venv_python/lib/python3.12/site-packages/
 
 <VirtualHost *:80>
     # Set the server name and server alias
