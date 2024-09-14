@@ -57,40 +57,7 @@ def FrameworkServer(class_, swarm=True, logs=True, *args, **kwargs):
 
     return RadiantServer(
         class_,
-        path=os.path.realpath(os.path.join(os.path.dirname(__file__), 'brython')),
-        # handlers=(
-        # [
-        # r'^/ws',
-        # (
-        # os.path.realpath(
-        # os.path.join(
-        # os.path.dirname(__file__), 'tornado_handlers.py'
-        # )
-        # ),
-        # 'WSHandler',
-        # ),
-        # {},
-        # ],
-        # [
-        # r'^/dashboard',
-        # RadiantHandler,
-        # {
-        # 'mode': 'dashboard',
-        # },
-        # ],
-        # [
-        # r'^/mode',
-        # (
-        # os.path.realpath(
-        # os.path.join(
-        # os.path.dirname(__file__), 'tornado_handlers.py'
-        # )
-        # ),
-        # 'ModeHandler',
-        # ),
-        # {},
-        # ],
-        # ),
+        path=[os.path.realpath(os.path.join(os.path.dirname(__file__), 'brython'))],
 
         template=os.path.realpath(
             os.path.join(os.path.dirname(__file__), 'template.html')
@@ -113,7 +80,7 @@ def FrameworkServer(class_, swarm=True, logs=True, *args, **kwargs):
         # callbacks=[(os.path.realpath(os.path.join(
         # os.path.dirname(__file__), 'tornado_handlers.py')), 'consumer')]
         debug_level=0,
-        brython_version='3.11.1',
+        brython_version='3.12.3',
         **kwargs,
     )
 
