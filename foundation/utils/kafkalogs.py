@@ -14,7 +14,7 @@ class KafkaLogging(logging.Handler):
         """"""
         super().__init__()
 
-        self.topic = environ('SERVICE_NAME', 'logs')
+        self.topic = environ('WORKER_NAME', 'logs')
         formatter = logging.Formatter(f'%(levelname)s: {self.topic} [%(asctime)s]: %(message)s')
         self.setFormatter(formatter)
         self.producer = Producer({'bootstrap.servers': 'kafka-logs-service:9093'})
