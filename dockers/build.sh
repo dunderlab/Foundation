@@ -29,6 +29,6 @@ if [[ -z "$IMAGE_NAME" || -z "$VERSION" ]]; then
 fi
 
 # Construir la imagen
-docker build -t "$IMAGE_NAME":"$VERSION" -f "$DOCKERFILE_NAME" .
+docker build --no-cache --progress=plain -t "$IMAGE_NAME":"$VERSION" -f "$DOCKERFILE_NAME" .
 
 cd ..
