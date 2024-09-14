@@ -1,8 +1,11 @@
-from foundation.utils import kafkalogs
-
+from foundation.utils import chaskilogs
 import time
 from datetime import datetime
 import logging
+
+
+logging.basicConfig(level=logging.WARNING)
+
 
 while True:
 
