@@ -6,7 +6,7 @@ import curses
 import logging
 import argparse
 
-from foundation.utils import Workers, WORKER_NAME
+from foundation.utils import Workers, WORKER_NAME, HostWorker
 from foundation.workers import list_workers, select_worker
 
 logging.basicConfig(level=logging.CRITICAL)
@@ -18,6 +18,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 workers = Workers(swarm_advertise_addr=args.advertise_addr)
+host_workers = HostWorker()
 
 foundation_services = set(
     [
@@ -40,6 +41,9 @@ COMMANDS = [
 COMMAND_START = '[START]'
 COMMAND_RESTART = '[RESTART]'
 COMMAND_STOP = '[STOP]'
+COMMAND_KILL = '[KILL]'
+COMMAND_TERMINATE = '[TERM]'
+
 
 system_workers = set(
     [
@@ -56,14 +60,24 @@ extra_args = {
         'port': 51102,
         'restart': True,
     },
-
-    'start_chaski_root_worker': {'port': 51110,},
-    'start_chaski_ca_worker': {'port': 51111,},
-    'start_chaski_remote_worker': {'port': 51112,},
-    'start_chaski2api_worker': {'port': 51113,},
-    'start_chaski_logger_root_worker': {'port': 51114,},
-    'start_chaski_api_logger_worker': {'port': 51115,},
-
+    'start_chaski_root_worker': {
+        'port': 51110,
+    },
+    'start_chaski_ca_worker': {
+        'port': 51111,
+    },
+    'start_chaski_remote_worker': {
+        'port': 51112,
+    },
+    'start_chaski2api_worker': {
+        'port': 51113,
+    },
+    'start_chaski_logger_root_worker': {
+        'port': 51114,
+    },
+    'start_chaski_api_logger_worker': {
+        'port': 51115,
+    },
 }
 
 CONTINUE = True
@@ -89,6 +103,7 @@ class Stats:
         """Constructor"""
         global CONTINUE
         self.row_services = {}
+        self.row_host_workers = {}
         curses.resizeterm(100, 1000)
         curses.curs_set(0)
         stdscr.nodelay(True)
@@ -117,10 +132,14 @@ class Stats:
                 name='USER WORKERS',
                 start=start,
             )
+
+            start = self.update_host_workers('HOST WORKERS', start=start)
+
             self.stdscr.addstr(start, 0, '-' * 80)
             start = self.update_volumes_stats(
                 name='VOLUMES', start=start + 2
             )
+
             self.stdscr.addstr(start, 0, '-' * 80)
             self.stdscr.addstr(
                 start + 2, 0, workers.swarm.get_join_command()
@@ -142,7 +161,8 @@ class Stats:
                     worker = line.split()[1][line.split()[1].find('@') + 1 :]
                 else:
                     worker = None
-                self.process_event(command, y, worker)
+                self.process_service_event(command, y, worker)
+                self.process_host_event(command, y, worker)
 
             elif event == ord('q'):
                 CONTINUE = False
@@ -158,7 +178,7 @@ class Stats:
             #     os.system('foundation_start > /dev/null 2>&1')
 
     # ----------------------------------------------------------------------
-    def process_event(self, command, row, worker):
+    def process_service_event(self, command, row, worker):
         """"""
         if not row in self.row_services:
             return
@@ -217,6 +237,32 @@ class Stats:
                 )
 
     # ----------------------------------------------------------------------
+    def process_host_event(self, command, row, service_name):
+        """"""
+        if not row in self.row_host_workers:
+            return
+
+        if COMMAND_RESTART in command:
+            command = COMMAND_RESTART
+        elif COMMAND_STOP in command:
+            command = COMMAND_STOP
+        elif COMMAND_START in command:
+            command = COMMAND_START
+        elif COMMAND_TERMINATE in command:
+            command = COMMAND_TERMINATE
+        elif COMMAND_KILL in command:
+            command = COMMAND_KILL
+
+        # host_workers.load_ids()
+
+        if command == COMMAND_KILL:
+            host_workers.stop(service_name, 'kill')
+        elif command == COMMAND_TERMINATE:
+            host_workers.stop(service_name, 'terminate')
+        elif command in [COMMAND_RESTART, COMMAND_START]:
+            host_workers.restart(service_name)
+
+    # ----------------------------------------------------------------------
     def write_row(self, items, row=0, m=0):
         """"""
         for item, col in zip(items, self.COL):
@@ -229,17 +275,26 @@ class Stats:
             elif col == 0 and item in [
                 COMMAND_START,
                 COMMAND_STOP + COMMAND_RESTART,
+                COMMAND_KILL + COMMAND_RESTART,
+                COMMAND_TERMINATE + COMMAND_RESTART,
             ]:
                 if item == COMMAND_START:
                     color = curses.color_pair(3)
-                elif item == COMMAND_STOP + COMMAND_RESTART:
+                elif item in [
+                    (COMMAND_STOP + COMMAND_RESTART),
+                    (COMMAND_KILL + COMMAND_RESTART),
+                    (COMMAND_TERMINATE + COMMAND_RESTART),
+                ]:
                     color = curses.color_pair(4)
                 else:
                     color = curses.color_pair(0)
-
+            elif col == self.COL[1] and items[3] in ['None', 'zombie']:
+                color = curses.color_pair(1)
             elif col == 126 and not item in ['IMAGE', '----']:
                 images = workers.swarm.client.images.list()
-                if not any(item in tag for image in images for tag in image.tags):
+                if not any(
+                    item in tag for image in images for tag in image.tags
+                ):
                     color = curses.color_pair(1)
             else:
                 color = curses.color_pair(0)
@@ -375,6 +430,44 @@ class Stats:
         )
         for row, volume in enumerate(networks, start=start + 1):
             self.stdscr.addstr(row, 0, volume.name)
+        return row + 2
+
+    # ----------------------------------------------------------------------
+    def update_host_workers(self, name, start=0):
+        """"""
+        self.stdscr.addstr(start, 0, name)
+
+        self.write_row(
+            [name] + ['', 'PID', 'STATUS', 'RUN', 'ENV'], row=start, m=0
+        )
+
+        host_workers.load_ids()
+        process = host_workers.ids.copy()
+
+        if not process:
+            return start + 2
+
+        for row, service in enumerate(process, start=start + 1):
+
+            self.row_host_workers[row] = service
+
+            if process[service]['status'] in ['None', 'zombie']:
+                command = COMMAND_START
+            else:
+                command = COMMAND_TERMINATE + COMMAND_RESTART
+
+            self.write_row(
+                [
+                    command,
+                    service,
+                    str(process[service]['pid']),
+                    process[service]['status'],
+                    process[service]['run'],
+                    str(process[service]['env']),
+                ],
+                row=row,
+            )
+
         return row + 2
 
 
