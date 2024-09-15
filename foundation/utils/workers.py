@@ -29,13 +29,17 @@ class Workers:
     # ----------------------------------------------------------------------
     def gen_worker_name(self, length=8):
         """"""
-        id_ = "".join([random.choice(ascii_letters + digits) for _ in range(length)])
+        id_ = "".join(
+            [random.choice(ascii_letters + digits) for _ in range(length)]
+        )
         if not WORKER_NAME.format(id_) in self.swarm.services:
             return WORKER_NAME.format(id_)
         return self.gen_worker_name(length)
 
     # ----------------------------------------------------------------------
-    def get_open_port(self,):
+    def get_open_port(
+        self,
+    ):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind(("", 0))
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -49,7 +53,17 @@ class Workers:
                 self.swarm.stop_service(worker)
 
     # ----------------------------------------------------------------------
-    def start_django_worker(self, worker_path, service_name=None, port=None, restart=False, image='djangoship', tag=None, endpoint='', env={}):
+    def start_django_worker(
+        self,
+        worker_path,
+        service_name=None,
+        port=None,
+        restart=False,
+        image='djangoship',
+        tag=None,
+        endpoint='',
+        env={},
+    ):
         """"""
         if tag == None and image == 'djangoship':
             tag = '1.4'
@@ -87,8 +101,15 @@ class Workers:
             image=f"dunderlab/{image}:{tag}",
             name=service_name,
             networks=self.swarm.networks,
-            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port, 'TargetPort': 80},
-                                     ]},
+            endpoint_spec={
+                'Ports': [
+                    {
+                        'Protocol': 'tcp',
+                        'PublishedPort': port,
+                        'TargetPort': 80,
+                    },
+                ]
+            },
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -115,7 +136,17 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_brython_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.1', env={}, request_ports={}):
+    def start_brython_worker(
+        self,
+        worker_path,
+        service_name=None,
+        port=None,
+        run="main.py",
+        restart=False,
+        tag='1.1',
+        env={},
+        request_ports={},
+    ):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -145,7 +176,13 @@ class Workers:
             port_ = request_ports[port_env]
             if port_ is None:
                 port_ = self.get_open_port()
-            endpoint_spec_ports.append({'Protocol': 'tcp', 'PublishedPort': port_, 'TargetPort': port_})
+            endpoint_spec_ports.append(
+                {
+                    'Protocol': 'tcp',
+                    'PublishedPort': port_,
+                    'TargetPort': port_,
+                }
+            )
             env_ports[port_env] = port_
 
         service = self.swarm.client.services.create(
@@ -153,14 +190,21 @@ class Workers:
             name=service_name,
             networks=self.swarm.networks,
             command=[
-                "/bin/bash", "-c",
+                "/bin/bash",
+                "-c",
                 # f"if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && startup.sh && python /app/worker/{run}",
                 f"ntpd -g && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
-
             ],
-            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port, 'TargetPort': port},
-                                     *endpoint_spec_ports,
-                                     ]},
+            endpoint_spec={
+                'Ports': [
+                    {
+                        'Protocol': 'tcp',
+                        'PublishedPort': port,
+                        'TargetPort': port,
+                    },
+                    *endpoint_spec_ports,
+                ]
+            },
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -188,7 +232,16 @@ class Workers:
         return port
 
     # ----------------------------------------------------------------------
-    def start_python_worker(self, worker_path, service_name=None, port=None, run="main.py", restart=False, tag='1.1', env={}):
+    def start_python_worker(
+        self,
+        worker_path,
+        service_name=None,
+        port=None,
+        run="main.py",
+        restart=False,
+        tag='1.1',
+        env={},
+    ):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
             worker_path = os.path.abspath(worker_path)
@@ -217,12 +270,20 @@ class Workers:
             name=service_name,
             networks=self.swarm.networks,
             command=[
-                "/bin/bash", "-c",
+                "/bin/bash",
+                "-c",
                 f"ntpd -g && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
                 # f"if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && startup.sh && python /app/worker/{run}",
             ],
-            endpoint_spec={'Ports': [{'Protocol': 'tcp', 'PublishedPort': port, 'TargetPort': port},
-                                     ]},
+            endpoint_spec={
+                'Ports': [
+                    {
+                        'Protocol': 'tcp',
+                        'PublishedPort': port,
+                        'TargetPort': port,
+                    },
+                ]
+            },
             mounts=[
                 docker.types.Mount(
                     type="bind",
@@ -271,8 +332,3 @@ class Workers:
                     return self.start_python_worker(worker_path, **kwargs)
         else:
             logging.warning('Impossible to detect a Worker')
-
-
-
-
-
