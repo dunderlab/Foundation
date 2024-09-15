@@ -29,7 +29,11 @@ if [[ -z "$IMAGE_NAME" || -z "$VERSION" ]]; then
 fi
 
 # Construir la imagen
-docker build -t "$IMAGE_NAME":"$VERSION" -f "$DOCKERFILE_NAME" .
+
+# Crear el builder y utilizarlo
+docker buildx create --use
+docker buildx build --platform linux/amd64,linux/arm64 --no-cache --progress=plain -t "$IMAGE_NAME":"$VERSION" -f "$DOCKERFILE_NAME" --push .
+docker buildx rm
 
 # Etiquetar la imagen con "latest"
 docker tag "$IMAGE_NAME":"$VERSION" "$IMAGE_NAME":latest

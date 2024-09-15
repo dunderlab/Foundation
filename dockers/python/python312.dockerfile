@@ -2,7 +2,7 @@
 FROM python:3.12
 
 LABEL image="dunderlab/python312"
-LABEL version="1.1"
+LABEL version="1.2"
 LABEL maintainer="yencardonaal@unal.edu.co"
 LABEL description=""
 LABEL project=""
