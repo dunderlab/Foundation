@@ -17,10 +17,10 @@ class HostWorker:
     """"""
 
     # ----------------------------------------------------------------------
-    def __init__(self):
+    def __init__(self, env='python3'):
         """"""
-
         self.log_file = os.path.join(project_folder, 'process_info')
+        self.env = env
 
         try:
             self.load_ids(drop=True)
@@ -69,16 +69,16 @@ class HostWorker:
                 self.restart(service_name)
             return
 
-        with open(os.devnull, 'w') as devnull:
+        with open(os.path.join(worker_path, 'logfile'), 'w') as logfile:
             process = subprocess.Popen(
-                ['python3', os.path.join(worker_path, run)],
+                [self.env, os.path.join(worker_path, run)],
                 env={
                     "SERVICE_NAME": service_name_env,
                     "WORKER_NAME": service_name,
                     **env,
                 },
-                stdout=devnull,
-                stderr=devnull,
+                stdout=logfile,
+                stderr=logfile,
                 preexec_fn=os.setpgrp,
             )
 
@@ -111,16 +111,18 @@ class HostWorker:
         self.stop(service_name)
 
         proc = self.ids[service_name]
-        with open(os.devnull, 'w') as devnull:
+        with open(
+            os.path.join(proc['worker_path'], 'logfile'), 'w'
+        ) as logfile:
             process = subprocess.Popen(
-                ['python3', os.path.join(proc['worker_path'], proc['run'])],
+                [self.env, os.path.join(proc['worker_path'], proc['run'])],
                 env={
                     "SERVICE_NAME": proc['service_name_env'],
                     "WORKER_NAME": service_name,
                     **proc['env'],
                 },
-                stdout=devnull,
-                stderr=devnull,
+                stdout=logfile,
+                stderr=logfile,
                 preexec_fn=os.setpgrp,
             )
 
