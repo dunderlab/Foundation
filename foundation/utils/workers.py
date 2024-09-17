@@ -63,6 +63,8 @@ class Workers:
         tag=None,
         endpoint='',
         env={},
+        mounts=None,
+        request_ports={},
     ):
         """"""
         if tag == None and image == 'djangoship':
@@ -97,10 +99,36 @@ class Workers:
             logging.warning(f"Service '{service_name}' already exist")
             return
 
+        endpoint_spec_ports = []
+        env_ports = {}
+        for port_env in request_ports:
+            port_ = request_ports[port_env]
+            if port_ is None:
+                port_ = self.get_open_port()
+            endpoint_spec_ports.append(
+                {
+                    'Protocol': 'tcp',
+                    'PublishedPort': port_,
+                    'TargetPort': port_,
+                }
+            )
+            env_ports[port_env] = port_
+
+        docker_mounts = []
+        if mounts:
+            for source, target in mounts:
+
+                docker_mounts.append(
+                    docker.types.Mount(
+                        type='bind', source=source, target=target
+                    )
+                )
+
         service = self.swarm.client.services.create(
             image=f"dunderlab/{image}:{tag}",
             name=service_name,
             networks=self.swarm.networks,
+            hosts=self.swarm.extra_host(),
             endpoint_spec={
                 'Ports': [
                     {
@@ -108,6 +136,7 @@ class Workers:
                         'PublishedPort': port,
                         'TargetPort': 80,
                     },
+                    *endpoint_spec_ports,
                 ]
             },
             mounts=[
@@ -122,6 +151,7 @@ class Workers:
                     source="/var/run/docker.sock",
                     target="/var/run/docker.sock",
                 ),
+                *docker_mounts,
             ],
             env={
                 "DJANGOPROJECT": app_name,
@@ -129,6 +159,7 @@ class Workers:
                 "ENDPOINT": endpoint,
                 "SERVICE_NAME": service_name_env,
                 "WORKER_NAME": service_name,
+                **env_ports,
                 **env,
             },
         )
@@ -145,6 +176,7 @@ class Workers:
         restart=False,
         tag='1.1',
         env={},
+        mounts=None,
         request_ports={},
     ):
         """"""
@@ -185,10 +217,21 @@ class Workers:
             )
             env_ports[port_env] = port_
 
+        docker_mounts = []
+        if mounts:
+            for source, target in mounts:
+
+                docker_mounts.append(
+                    docker.types.Mount(
+                        type='bind', source=source, target=target
+                    )
+                )
+
         service = self.swarm.client.services.create(
             image=f"dunderlab/python312:{tag}",
             name=service_name,
             networks=self.swarm.networks,
+            hosts=self.swarm.extra_host(),
             command=[
                 "/bin/bash",
                 "-c",
@@ -217,6 +260,7 @@ class Workers:
                     source="/var/run/docker.sock",
                     target="/var/run/docker.sock",
                 ),
+                *docker_mounts,
             ],
             env={
                 # "STREAM": port_stream,
@@ -241,6 +285,8 @@ class Workers:
         restart=False,
         tag='1.1',
         env={},
+        mounts=None,
+        request_ports={},
     ):
         """"""
         if os.path.isabs(worker_path) or os.path.exists(worker_path):
@@ -265,10 +311,36 @@ class Workers:
             logging.warning(f"Service '{service_name}' already exist")
             return
 
+        endpoint_spec_ports = []
+        env_ports = {}
+        for port_env in request_ports:
+            port_ = request_ports[port_env]
+            if port_ is None:
+                port_ = self.get_open_port()
+            endpoint_spec_ports.append(
+                {
+                    'Protocol': 'tcp',
+                    'PublishedPort': port_,
+                    'TargetPort': port_,
+                }
+            )
+            env_ports[port_env] = port_
+
+        docker_mounts = []
+        if mounts:
+            for source, target in mounts:
+
+                docker_mounts.append(
+                    docker.types.Mount(
+                        type='bind', source=source, target=target
+                    )
+                )
+
         service = self.swarm.client.services.create(
             image=f"dunderlab/python312:{tag}",
             name=service_name,
             networks=self.swarm.networks,
+            hosts=self.swarm.extra_host(),
             command=[
                 "/bin/bash",
                 "-c",
@@ -282,6 +354,7 @@ class Workers:
                         'PublishedPort': port,
                         'TargetPort': port,
                     },
+                    *endpoint_spec_ports,
                 ]
             },
             mounts=[
@@ -296,11 +369,13 @@ class Workers:
                     source="/var/run/docker.sock",
                     target="/var/run/docker.sock",
                 ),
+                *docker_mounts,
             ],
             env={
                 "PORT": port,
                 "SERVICE_NAME": service_name_env,
                 "WORKER_NAME": service_name,
+                **env_ports,
                 **env,
             },
         )
@@ -320,15 +395,19 @@ class Workers:
 
         if os.path.exists(os.path.join(worker_path, 'manage.py')):
             logging.warning('Running a Django worker')
-            return self.start_django_worker(worker_path, **kwargs)
+            return self.start_django_worker(worker_path, **kwargs)  # Django
         elif os.path.exists(os.path.join(worker_path, 'main.py')):
             with open(os.path.join(worker_path, 'main.py'), 'r') as file:
                 content = file.read()
                 if 'from foundation.radiant.server' in content:
                     logging.warning('Running a Brython worker')
-                    return self.start_brython_worker(worker_path, **kwargs)
+                    return self.start_brython_worker(
+                        worker_path, **kwargs
+                    )  # Brython
                 else:
                     logging.warning('Running a Pyhton worker')
-                    return self.start_python_worker(worker_path, **kwargs)
+                    return self.start_python_worker(
+                        worker_path, **kwargs
+                    )  # Python
         else:
             logging.warning('Impossible to detect a Worker')

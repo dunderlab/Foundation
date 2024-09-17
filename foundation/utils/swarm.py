@@ -103,13 +103,18 @@ class Swarm:
     def stop_service(self, service_name):
         """"""
         service = self.client.services.get(service_name)
-        service.remove()
+        return service.remove()
+
+    # ----------------------------------------------------------------------
+    def restart_service(self, service_name):
+        """"""
+        service = self.client.services.get(service_name)
+        return service.update(force_update=True)
 
     # ----------------------------------------------------------------------
     def stop_all_services(self):
         """"""
-        for service in self.services:
-            self.stop_service(service)
+        return [self.stop_service(service) for service in self.services]
 
     # ----------------------------------------------------------------------
     def stats(self, service_name):
@@ -167,6 +172,7 @@ class Swarm:
         tag='1.1',
         volume_name=None,
         mounts=None,
+        env={},
     ):
         """"""
         if restart and (service_name in self.services):
@@ -224,10 +230,11 @@ class Swarm:
                 ),
                 *docker_mounts,
             ],
-            env=[
-                f"PORT={port}",
+            env={
+                f"PORT": {port},
                 # "NTP_SERVER=ntp-service",
-            ],
+                **env,
+            },
         )
         return service_name in self.services
 
