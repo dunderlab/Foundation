@@ -1,3 +1,17 @@
+"""
+This module defines the Swarm class, which provides an interface for managing
+a Docker Swarm environment. It includes functionalities for creating and managing
+services, networks, volumes, and retrieving operation statistics within the swarm.
+
+Key functionalities include:
+- Initializing a Docker Swarm.
+- Creating and deleting Docker volumes.
+- Managing services and networking in the Swarm.
+- Retrieving runtime statistics for services.
+- Starting various services like NTP, JupyterLab, Kafka, and TimescaleDB.
+
+"""
+
 import docker
 import logging
 import netifaces
@@ -5,13 +19,99 @@ import netifaces
 
 ########################################################################
 class Swarm:
-    """"""
+    """A class to manage a Docker Swarm environment.
+
+    This class provides functionality for initializing and managing
+    a Docker Swarm, including creating and managing services,
+    networks, volumes, and retrieving statistics.
+
+    Attributes
+    ----------
+    client : docker.DockerClient
+        A Docker client instance used to communicate with the Docker daemon.
+    networks : list
+        A list of network names available in the swarm.
+
+    Methods
+    -------
+    create_networks() -> None
+        Creates necessary overlay networks for the swarm services.
+
+    create_volume(volume_name: str) -> str
+        Creates a new Docker volume if it does not already exist.
+
+    delete_volume(volume_name: str) -> None
+        Deletes an existing Docker volume from the swarm.
+
+    services() -> list
+        Retrieves a list of active service names in the swarm.
+
+    containers(attr: str = 'id') -> list
+        Retrieves a list of container IDs currently running in the swarm.
+
+    volumes() -> list
+        Retrieves a list of Docker volumes currently active in the swarm.
+
+    stop_service(service_name: str) -> None
+        Stops a specified service in the swarm by name.
+
+    restart_service(service_name: str) -> None
+        Restarts a specified service in the swarm.
+
+    stop_all_services() -> list
+        Stops all running services in the swarm at once.
+
+    stats(service_name: str) -> list
+        Retrieves runtime statistics for a specified service.
+
+    start_ntp(service_name: str = "ntp-service", port: int = 123,
+              restart: bool = False, tag: str = '1.0') -> bool
+        Starts an NTP service in the Docker swarm.
+
+    start_jupyterlab(service_name: str = "jupyterlab-service", port: int = 8888,
+                     restart: bool = False, tag: str = '1.1',
+                     volume_name: str = None, mounts: list = None,
+                     env: dict = {}) -> bool
+        Starts a JupyterLab service in the Docker swarm.
+
+    start_kafka(kafka_service_name: str = "kafka-service",
+                 zookeeper_service_name: str = "zookeeper-service",
+                 kafka_port: int = 9092, kafka_port_external: int = 19092,
+                 zookeeper_port: int = 2181, restart: bool = False,
+                 tag: str = '1.1') -> tuple
+        Starts Kafka and Zookeeper services in the Docker swarm.
+
+    start_timescaledb(service_name: str = "timescaledb-service",
+                       port: int = 5432, volume_name: str = None,
+                       restart: bool = False, tag: str = 'latest-pg15') -> bool
+        Starts a TimescaleDB service in the Docker swarm.
+    """
 
     # ----------------------------------------------------------------------
     def __init__(
-        self, base_url='unix://var/run/docker.sock', advertise_addr=''
+        self,
+        base_url: str = 'unix://var/run/docker.sock',
+        advertise_addr: str = '',
     ):
-        """Constructor"""
+        """Initialize the Swarm class instance.
+
+        Parameters
+        ----------
+        base_url : str, optional
+            The URL for the Docker base socket, by default 'unix://var/run/docker.sock'.
+        advertise_addr : str, optional
+            The address which the swarm manager advertises to other nodes, by default ''.
+
+        Raises
+        ------
+        docker.errors.APIError
+            If there is an error communicating with the Docker daemon.
+
+        Notes
+        -----
+        This constructor checks if a swarm is already running and initializes it
+        if it is not. It also creates the default overlay networks required for the services.
+        """
         self.client = docker.DockerClient(base_url=base_url)
         try:
             logging.warning("Starting swarm...")
@@ -31,9 +131,18 @@ class Swarm:
         self.create_networks()
 
     # ----------------------------------------------------------------------
-    def create_networks(self):
-        """"""
-        self.networks = ['hci_network']
+    def create_networks(self) -> None:
+        """Create overlay networks for the swarm services.
+
+        This method checks if predefined networks exist in the swarm.
+        If a network does not exist, it creates a new overlay network.
+
+        Notes
+        -----
+        Currently, the following networks are created:
+        - foundation_network
+        """
+        self.networks = ['foundation_network']
         logging.warning("Creating networks...")
         for network in self.networks:
             if network not in [n.name for n in self.client.networks.list()]:
@@ -41,8 +150,35 @@ class Swarm:
                 logging.warning(f"Created network '{network}'")
 
     # ----------------------------------------------------------------------
-    def create_volume(self, volume_name):
-        """"""
+    def create_volume(self, volume_name: str) -> str:
+        """Create a Docker volume.
+
+        This method creates a new volume in the Docker swarm if it does not
+        already exist. Volumes are used for persisting data shared among
+        containers.
+
+        Parameters
+        ----------
+        volume_name : str
+            The name of the volume to create.
+            If the name does not end with '-volume', it will be appended.
+
+        Returns
+        -------
+        str
+            The name of the created volume.
+
+        Raises
+        ------
+        docker.errors.APIError
+            If there is an error while creating the volume.
+
+        Notes
+        -----
+        This method ensures that the volume name complies with Docker
+        naming conventions and handles any potential errors that may arise
+        during the volume creation process.
+        """
         logging.warning("Creating volumes...")
         if not volume_name in self.volumes:
             if not volume_name.endswith('-volume'):
@@ -54,13 +190,33 @@ class Swarm:
         return volume_name
 
     # ----------------------------------------------------------------------
-    def delete_volume(self, volume_name):
-        """"""
+    def delete_volume(self, volume_name: str) -> None:
+        """Delete a Docker volume.
+
+        This method removes an existing volume from the Docker swarm. If the
+        volume does not exist, a warning is logged.
+
+        Parameters
+        ----------
+        volume_name : str
+            The name of the volume to delete. The name must comply with Docker
+            naming conventions.
+
+        Raises
+        ------
+        docker.errors.NotFound
+            If the volume does not exist.
+        docker.errors.APIError
+            If there is an error while attempting to remove the volume.
+
+        Notes
+        -----
+        Ensure that the volume is not being used by any containers before attempting
+        to delete it.
+        """
         logging.warning("Deleting volumes...")
         try:
-            # Fetch the volume
             volume = self.client.volumes.get(volume_name)
-            # Remove the volume
             volume.remove()
             logging.info(f"Volume '{volume_name}' has been deleted.")
         except docker.errors.NotFound:
@@ -74,16 +230,48 @@ class Swarm:
 
     # ----------------------------------------------------------------------
     @property
-    def services(self, attr='name'):
-        """"""
+    def services(self) -> list:
+        """Retrieve a list of service names in the swarm.
+
+        This property fetches the current services running in the swarm and
+        returns their names. The names can be used to identify and manage
+        specific services within the swarm.
+
+        Returns
+        -------
+        list
+            A list of service names currently active in the swarm.
+
+        Examples
+        --------
+        >>> swarm = Swarm()
+        >>> services = swarm.services
+        >>> print(services)
+        ['service_name_1', 'service_name_2', ...]
+        """
         return [
             getattr(service, attr) for service in self.client.services.list()
         ]
 
     # ----------------------------------------------------------------------
     @property
-    def containers(self, attr='id'):
-        """"""
+    def containers(self, attr: str = 'id') -> list:
+        """Retrieve a list of container IDs in the swarm.
+
+        This property retrieves the currently running containers in the
+        Docker swarm and returns their IDs.
+
+        Parameters
+        ----------
+        attr : str, optional
+            The attribute to retrieve from the container objects. By default,
+            the container ID is retrieved.
+
+        Returns
+        -------
+        list
+            A list of container IDs currently active in the swarm.
+        """
         return [
             getattr(container, attr)
             for container in self.client.containers.list()
@@ -91,8 +279,19 @@ class Swarm:
 
     # ----------------------------------------------------------------------
     @property
-    def volumes(self):
-        """"""
+    def volumes(self) -> list:
+        """Retrieve a list of Docker volumes in the swarm.
+
+        This property fetches the currently available volumes in the Docker swarm
+        and returns their names. The volume names can be used for managing persistent
+        data shared among containers.
+
+        Returns
+        -------
+        list
+            A list of volume names currently active in the swarm that adhere to
+            Docker naming conventions (ending with '-volume').
+        """
         return [
             v.name
             for v in self.client.volumes.list()
@@ -100,25 +299,123 @@ class Swarm:
         ]
 
     # ----------------------------------------------------------------------
-    def stop_service(self, service_name):
-        """"""
+    def stop_service(self, service_name: str) -> None:
+        """Stop a running service in the Docker swarm.
+
+        This method removes a specified service from the swarm. It ensures
+        the service is properly stopped and removed, freeing up resources.
+
+        Parameters
+        ----------
+        service_name : str
+            The name of the service to stop. It must match the name of an
+            existing service in the swarm.
+
+        Raises
+        ------
+        docker.errors.NotFound
+            If the service does not exist or has already been removed.
+        docker.errors.APIError
+            If there is an error while attempting to remove the service.
+
+        Notes
+        -----
+        Ensure that the service is not being used by any containers that
+        could prevent it from stopping.
+        """
         service = self.client.services.get(service_name)
         return service.remove()
 
     # ----------------------------------------------------------------------
-    def restart_service(self, service_name):
-        """"""
+    def restart_service(self, service_name: str) -> None:
+        """Restart a service in the Docker swarm.
+
+        This method updates and restarts the specified service specified by
+        its name, forcing an update to occur even if there are no changes
+        to the service.
+
+        Parameters
+        ----------
+        service_name : str
+            The name of the service to restart. It must match the name
+            of an existing service in the swarm.
+
+        Raises
+        ------
+        docker.errors.NotFound
+            If the service does not exist or has already been removed.
+        docker.errors.APIError
+            If there is an error while attempting to update the service.
+
+        Notes
+        -----
+        Restarting the service can help apply new changes or configurations
+        without needing to stop and remove the service entirely.
+        """
         service = self.client.services.get(service_name)
         return service.update(force_update=True)
 
     # ----------------------------------------------------------------------
-    def stop_all_services(self):
-        """"""
+    def stop_all_services(self) -> list:
+        """Stop all running services in the Docker swarm.
+
+        This method iterates through all services in the swarm and
+        stops each one. It is a convenient way to halt all services
+        at once, freeing up resources used by the containers associated
+        with these services.
+
+        Returns
+        -------
+        list
+            A list of service names that were successfully stopped.
+
+        Raises
+        ------
+        docker.errors.NotFound
+            If any of the services do not exist when attempting to stop them.
+        docker.errors.APIError
+            If there is an error while attempting to stop the services.
+
+        Notes
+        -----
+        Ensure that stopping services does not affect dependent services
+        or processes.
+        """
         return [self.stop_service(service) for service in self.services]
 
     # ----------------------------------------------------------------------
-    def stats(self, service_name):
-        """"""
+    def stats(self, service_name: str) -> list:
+        """Retrieve statistics for a specific service in the Docker swarm.
+
+        This method gathers and returns runtime statistics for the specified
+        service. The statistics include information such as CPU usage, memory
+        consumption, and network I/O. Useful for monitoring service performance.
+
+        Parameters
+        ----------
+        service_name : str
+            The name of the service for which to retrieve statistics. This name
+            must match one of the currently running services in the swarm.
+
+        Returns
+        -------
+        list
+            A list of dictionaries containing statistics for each task of the
+            specified service. Each dictionary includes various metrics, which
+            can be used for monitoring and debugging purposes.
+
+        Raises
+        ------
+        docker.errors.NotFound
+            If the specified service does not exist in the swarm.
+        docker.errors.APIError
+            If there is an error while attempting to retrieve stats for the service.
+
+        Notes
+        -----
+        Ensure that the service is running before attempting to retrieve its
+        statistics.
+        """
         service = self.client.services.get(service_name)
         stats = []
         for task in service.tasks():
@@ -133,9 +430,45 @@ class Swarm:
 
     # ----------------------------------------------------------------------
     def start_ntp(
-        self, service_name="ntp-service", port=123, restart=False, tag='1.0'
+        self,
+        service_name: str = "ntp-service",
+        port: int = 123,
+        restart: bool = False,
+        tag: str = '1.0',
     ):
-        """"""
+        """Start an NTP service in the Docker swarm.
+
+        This method creates and starts an NTP service within the Docker swarm,
+        allowing for network time synchronization.
+
+        Parameters
+        ----------
+        service_name : str, optional
+            The name of the NTP service to create. Defaults to "ntp-service".
+        port : int, optional
+            The port to expose for the NTP service. Defaults to 123.
+        restart : bool, optional
+            If True, the method will attempt to restart the service if it
+            already exists. Defaults to False.
+        tag : str, optional
+            The tag for the Docker image to use. Defaults to '1.0'.
+
+        Returns
+        -------
+        bool
+            True if the service was successfully started, False if it already
+            exists or if an error occurred during creation.
+
+        Raises
+        ------
+        docker.errors.APIError
+            If there is an error while attempting to create the service.
+
+        Notes
+        -----
+        Ensure that port 123 is not already in use on the host machine to
+        avoid conflicts during service creation.
+        """
         if restart and (service_name in self.services):
             self.stop_service(service_name)
             logging.warning(f"Restarting service '{service_name}'")
@@ -166,15 +499,55 @@ class Swarm:
     # ----------------------------------------------------------------------
     def start_jupyterlab(
         self,
-        service_name="jupyterlab-service",
-        port=8888,
-        restart=False,
-        tag='1.1',
-        volume_name=None,
-        mounts=None,
-        env={},
+        service_name: str = "jupyterlab-service",
+        port: int = 8888,
+        restart: bool = False,
+        tag: str = '1.1',
+        volume_name: str = None,
+        mounts: list = None,
+        env: dict = {},
     ):
-        """"""
+        """Start a JupyterLab service in the Docker swarm.
+
+        This method creates and starts a JupyterLab service within the Docker swarm,
+        allowing users to access an interactive Jupyter notebook environment.
+
+        Parameters
+        ----------
+        service_name : str, optional
+            The name of the JupyterLab service to create. Defaults to "jupyterlab-service".
+        port : int, optional
+            The port to expose for the JupyterLab service. Defaults to 8888.
+        restart : bool, optional
+            If True, the method will attempt to restart the service if it
+            already exists. Defaults to False.
+        tag : str, optional
+            The tag for the Docker image to use. Defaults to '1.1'.
+        volume_name : str, optional
+            The name of the Docker volume to attach for persisting data.
+            If not provided, a new volume will be created.
+        mounts : list, optional
+            Additional mounts for the service, specified as a list of tuples
+            containing source and target paths.
+        env : dict, optional
+            Environment variables to set for the JupyterLab service.
+
+        Returns
+        -------
+        bool
+            True if the service was successfully started, False if it already
+            exists or if an error occurred during creation.
+
+        Raises
+        ------
+        docker.errors.APIError
+            If there is an error while attempting to create the service.
+
+        Notes
+        -----
+        Ensure that the required ports are not already in use on the host machine to
+        avoid conflicts during service creation.
+        """
         if restart and (service_name in self.services):
             self.stop_service(service_name)
             logging.warning(f"Restarting service '{service_name}'")
@@ -240,16 +613,57 @@ class Swarm:
 
     # ----------------------------------------------------------------------
     def start_kafka(
-        self,
-        kafka_service_name="kafka-service",
-        zookeeper_service_name="zookeeper-service",
-        kafka_port=9092,
-        kafka_port_external=19092,
-        zookeeper_port=2181,
-        restart=False,
-        tag='1.1',
+        self: "Swarm",
+        kafka_service_name: str = "kafka-service",
+        zookeeper_service_name: str = "zookeeper-service",
+        kafka_port: int = 9092,
+        kafka_port_external: int = 19092,
+        zookeeper_port: int = 2181,
+        restart: bool = False,
+        tag: str = '1.1',
     ):
-        """"""
+        """Start Kafka and Zookeeper services in the Docker swarm.
+
+        This method initializes and starts both Kafka and Zookeeper services
+        within the Docker swarm. It allows for message brokering and
+        management of service instances to provide a reliable streaming
+        platform.
+
+        Parameters
+        ----------
+        kafka_service_name : str, optional
+            The name of the Kafka service to create. Defaults to "kafka-service".
+        zookeeper_service_name : str, optional
+            The name of the Zookeeper service to create. Defaults to "zookeeper-service".
+        kafka_port : int, optional
+            The internal port for Kafka service. Defaults to 9092.
+        kafka_port_external : int, optional
+            The external port exposed for Kafka service. Defaults to 19092.
+        zookeeper_port : int, optional
+            The port exposed for Zookeeper service. Defaults to 2181.
+        restart : bool, optional
+            If True, the method will attempt to restart the services if they
+            already exist. Defaults to False.
+        tag : str, optional
+            The tag for the Docker images to use. Defaults to '1.1'.
+
+        Returns
+        -------
+        tuple
+            A tuple indicating whether the Kafka and Zookeeper services were
+            successfully started. The first element corresponds to the Kafka service
+            status and the second to the Zookeeper service status.
+
+        Raises
+        ------
+        docker.errors.APIError
+            If there is an error while attempting to create the services.
+
+        Notes
+        -----
+        Ensure that the specified service names do not conflict with existing
+        services in the swarm to avoid unintended behavior.
+        """
         if restart and (kafka_service_name in self.services):
             self.stop_service(kafka_service_name)
             logging.warning(f"Restarting service '{kafka_service_name}'")
@@ -319,14 +733,55 @@ class Swarm:
     # ----------------------------------------------------------------------
     def start_kafka_logs(
         self,
-        kafka_service_name="kafka-logs-service",
-        zookeeper_service_name="zookeeper-logs-service",
-        kafka_port=9093,
-        kafka_port_external=19093,
-        zookeeper_port=2182,
-        restart=False,
-        tag='1.1',
+        kafka_service_name: str = "kafka-logs-service",
+        zookeeper_service_name: str = "zookeeper-logs-service",
+        kafka_port: int = 9093,
+        kafka_port_external: int = 19093,
+        zookeeper_port: int = 2182,
+        restart: bool = False,
+        tag: str = '1.1',
     ):
+        """Start Kafka and Zookeeper logging services in the Docker swarm.
+
+        This method initializes and starts both Kafka and Zookeeper logging services
+        within the Docker swarm, providing a mechanism for capturing and managing
+        logs generated by Kafka and Zookeeper instances.
+
+        Parameters
+        ----------
+        kafka_service_name : str, optional
+            The name of the Kafka logging service to create. Defaults to "kafka-logs-service".
+        zookeeper_service_name : str, optional
+            The name of the Zookeeper logging service to create. Defaults to "zookeeper-logs-service".
+        kafka_port : int, optional
+            The internal port for Kafka logging service. Defaults to 9093.
+        kafka_port_external : int, optional
+            The external port exposed for Kafka logging service. Defaults to 19093.
+        zookeeper_port : int, optional
+            The port exposed for Zookeeper logging service. Defaults to 2182.
+        restart : bool, optional
+            If True, the method will attempt to restart the services if they
+            already exist. Defaults to False.
+        tag : str, optional
+            The tag for the Docker images to use. Defaults to '1.1'.
+
+        Returns
+        -------
+        tuple
+            A tuple indicating whether the Kafka logging and Zookeeper logging services were
+            successfully started. The first element corresponds to the Kafka logging service
+            status and the second to the Zookeeper logging service status.
+
+        Raises
+        ------
+        docker.errors.APIError
+            If there is an error while attempting to create the services.
+
+        Notes
+        -----
+        Ensure that the specified service names do not conflict with existing
+        services in the swarm to avoid unintended behavior.
+        """
         """"""
         return self.start_kafka(
             kafka_service_name,
@@ -341,12 +796,50 @@ class Swarm:
     # ----------------------------------------------------------------------
     def start_timescaledb(
         self,
-        service_name="timescaledb-service",
-        port=5432,
-        volume_name=None,
-        restart=False,
-        tag='latest-pg15',
+        service_name: str = "timescaledb-service",
+        port: int = 5432,
+        volume_name: str = None,
+        restart: bool = False,
+        tag: str = 'latest-pg15',
     ):
+        """Start a TimescaleDB service in the Docker swarm.
+
+        This method initializes and starts a TimescaleDB service within the
+        Docker swarm, providing a robust time-series database solution.
+
+        Parameters
+        ----------
+        service_name : str, optional
+            The name of the TimescaleDB service to create.
+            Defaults to "timescaledb-service".
+        port : int, optional
+            The port on which the TimescaleDB service will be exposed.
+            Defaults to 5432.
+        volume_name : str, optional
+            The name of the Docker volume to attach for persisting data.
+            If not provided, a new volume will be created.
+        restart : bool, optional
+            If True, the method will attempt to restart the service if it
+            already exists. Defaults to False.
+        tag : str, optional
+            The tag for the Docker image to use. Defaults to 'latest-pg15'.
+
+        Returns
+        -------
+        bool
+            True if the TimescaleDB service was successfully
+            started, False if it already exists or if an error occurred during creation.
+
+        Raises
+        ------
+        docker.errors.APIError
+            If there is an error while attempting to create the service.
+
+        Notes
+        -----
+        Ensure that the specified service name does not conflict with
+        existing services in the swarm to avoid unintended behavior.
+        """
         """"""
         if restart and (service_name in self.services):
             self.stop_service(service_name)
@@ -392,8 +885,28 @@ class Swarm:
         return service_name in self.services
 
     # ----------------------------------------------------------------------
-    def get_join_command(self):
-        """"""
+    def get_join_command(self) -> str:
+        """Retrieve the command to join the swarm as a worker node.
+
+        This method constructs and returns a Docker command that allows
+        a worker node to join the existing swarm managed by the current
+        node. The command contains the necessary token and address
+        required for the worker to successfully join.
+
+        Returns
+        -------
+        str
+            A formatted string that represents the Docker command for
+            joining the swarm as a worker. The command includes the worker
+            join token and manager address.
+
+        Notes
+        -----
+        This method will only work if the current node is part of an
+        active swarm and has control available. If the swarm is not
+        initialized or if control is not available, this method may
+        return None or result in an error.
+        """
         swarm_info = self.client.info().get('Swarm')
         if swarm_info and swarm_info.get('ControlAvailable'):
             worker_join_token = self.client.swarm.attrs['JoinTokens'][
@@ -403,16 +916,53 @@ class Swarm:
             return f'docker swarm join --token {worker_join_token} {manager_addr}'
 
     # ----------------------------------------------------------------------
-    def advertise_addr(self):
-        """"""
+    def advertise_addr(self) -> str:
+        """Retrieve the address of the swarm manager.
+
+        This method checks the current swarm information and returns the
+        address of the manager node. This address can be used by worker
+        nodes to join the swarm or for communication purposes.
+
+        Returns
+        -------
+        str
+            The address of the swarm manager, formatted as a string.
+            Returns None if the swarm is not initialized or if control
+            is not available.
+
+        Notes
+        -----
+        This method ensures that it only fetches the address if the
+        current node is part of an active swarm that has control available.
+        """
         swarm_info = self.client.info().get('Swarm')
         if swarm_info and swarm_info.get('ControlAvailable'):
             manager_addr = swarm_info.get('RemoteManagers')[0].get('Addr')
             return manager_addr
 
     # ----------------------------------------------------------------------
-    def extra_host(self):
-        """"""
+    def extra_host(self) -> dict:
+        """Retrieve the addresses of network interfaces for Docker.
+
+        This method checks all available network interfaces on the host machine
+        and returns a dictionary mapping the interface names to their corresponding
+        IPv4 addresses. This information can be useful for configuring services
+        that need to bind to specific network interfaces or for identifying
+        available network resources.
+
+        Returns
+        -------
+        dict
+            A dictionary where each key is a formatted string representing
+            the host alias for the Docker container (e.g., 'host.docker.<interface>'),
+            and each value is the corresponding IPv4 address for that interface.
+
+        Notes
+        -----
+        The retrieved addresses can be utilized to manage service networking
+        within a Docker Swarm setup. Only interfaces with valid IPv4 addresses
+        are included in the returned dictionary.
+        """
         interfaces = netifaces.interfaces()
         ips = {}
 
