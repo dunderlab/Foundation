@@ -196,12 +196,14 @@ class Stats:
         elif command in [COMMAND_RESTART, COMMAND_START]:
 
             method_service = f'start_{service_name.replace("-service",  "").replace("-",  "_")}'
-            # service_name = service_name.replace("-worker", "").replace("-", "_")
             worker_name = service_name.replace("-worker", "").replace(
                 "-", "_"
             )
 
-            if hasattr(workers.swarm, method_service):
+            if service_name in workers.swarm.services:
+                workers.swarm.restart_service(service_name)
+
+            elif hasattr(workers.swarm, method_service):
                 getattr(workers.swarm, method_service)(
                     **extra_args.get(
                         method_service,
@@ -211,23 +213,9 @@ class Stats:
                     )
                 )
 
-            elif worker_name in workers.swarm.services or os.path.exists(
-                select_worker(worker_name)
-            ):
+            elif os.path.exists(select_worker(worker_name)):
                 workers.start_worker(
                     worker_name,
-                    **extra_args.get(
-                        method_service,
-                        {
-                            'restart': True,
-                        },
-                    ),
-                )
-
-            elif worker_name in workers.swarm.services:
-                workers.start_worker(
-                    worker,
-                    service_name=worker_name,
                     **extra_args.get(
                         method_service,
                         {
