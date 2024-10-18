@@ -11,7 +11,7 @@ import signal
 class WatchDogWorker:
     """"""
 
-    hostname = os.environ['hostname']
+    hostnames = os.environ['hostname'].split(';')
     username = os.environ['username']
     password = os.environ['password']
     command = os.environ['command']
@@ -23,9 +23,19 @@ class WatchDogWorker:
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         # Connect to the server
-        self.client.connect(
-            self.hostname, username=self.username, password=self.password
-        )
+        for hostname in self.hostnames:
+            try:
+                self.client.connect(
+                    hostname,
+                    username=self.username,
+                    password=self.password,
+                )
+                self.hostname = hostname
+                break
+
+            except Exception as e:
+                logging.error(f'Failed to connect to {hostname}: {e}')
+                continue
 
         # Execute the command in the background and get the PID
         # The 'nohup' and '& echo $!' are used to run the command in the background and get its PID
@@ -46,22 +56,17 @@ class WatchDogWorker:
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
 
-        logging.warning('Pre loop')
         self.monitor_remote_process()
 
     # ----------------------------------------------------------------------
     def monitor_remote_process(self):
         while True:
-            logging.warning('Looping...')
 
             stdin, stdout, stderr = self.client.exec_command(
                 f"ps -p {self.pid}"
             )
 
             output = stdout.read().decode('utf-8')
-
-            logging.warning(f'XxX: stdout: {output}')
-            logging.warning(f'XxX: stderr: {stderr.read().decode('utf-8')}')
 
             if len(output.splitlines()) > 1:
                 logging.warning(
@@ -72,7 +77,7 @@ class WatchDogWorker:
                 self.client.close()
                 sys.exit(0)
 
-            time.sleep(1)
+            time.sleep(3)
 
     # ----------------------------------------------------------------------
     def kill_remote_process(self):
@@ -87,10 +92,6 @@ class WatchDogWorker:
         logging.warning(f"Signal {signum} received. Cleaning up...")
         self.kill_remote_process()
         sys.exit(0)
-
-
-if __name__ == '__main__':
-    WatchDogWorker()
 
 
 if __name__ == '__main__':

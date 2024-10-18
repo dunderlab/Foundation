@@ -28,12 +28,13 @@ RUN pip install --upgrade confluent-kafka \
                           cryptography \
                           fastapi \
                           uvicorn \
+                          paramiko \
                           figurestream \
                           radiant-framework \
                           dunderlab-foundation \
                           dunderlab-timescaledbapp \
                           dunderlab-docs \
-                          chaski-confluent \
+                          chaski-confluent==0.1a5 \
                           radiant-framework
 
 # Configure NTP

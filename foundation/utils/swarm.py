@@ -230,7 +230,7 @@ class Swarm:
 
     # ----------------------------------------------------------------------
     @property
-    def services(self) -> list:
+    def services(self, attr='name') -> list:
         """Retrieve a list of service names in the swarm.
 
         This property fetches the current services running in the swarm and
@@ -506,6 +506,7 @@ class Swarm:
         volume_name: str = None,
         mounts: list = None,
         env: dict = {},
+        requirements='',
     ):
         """Start a JupyterLab service in the Docker swarm.
 
@@ -570,6 +571,11 @@ class Swarm:
                     )
                 )
 
+        if requirements:
+            requirements = f"pip install --root-user-action=ignore {' '.join(requirements)}"
+        else:
+            requirements = 'echo'
+
         service = self.client.services.create(
             image=f"dunderlab/python312:{tag}",
             name=service_name,
@@ -577,7 +583,7 @@ class Swarm:
             command=[
                 "/bin/bash",
                 "-c",
-                "jupyter lab --notebook-dir='/app' --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token='' --NotebookApp.password=''",
+                f"{requirements} && jupyter lab --notebook-dir='/app' --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token='' --NotebookApp.password=''",
             ],
             endpoint_spec={
                 'Ports': [
@@ -604,7 +610,7 @@ class Swarm:
                 *docker_mounts,
             ],
             env={
-                f"PORT": {port},
+                f"PORT": port,
                 # "NTP_SERVER=ntp-service",
                 **env,
             },

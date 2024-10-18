@@ -375,6 +375,7 @@ class Workers:
         env: dict = {},
         mounts: list = None,
         request_ports: dict = {},
+        requirements='',
     ):
         """Start a Brython worker service in the Docker swarm.
 
@@ -485,6 +486,11 @@ class Workers:
                     )
                 )
 
+        if requirements:
+            requirements = f"pip install --root-user-action=ignore {' '.join(requirements)}"
+        else:
+            requirements = 'echo'
+
         service = self.swarm.client.services.create(
             image=f"dunderlab/python312:{tag}",
             name=service_name,
@@ -493,8 +499,7 @@ class Workers:
             command=[
                 "/bin/bash",
                 "-c",
-                # f"if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && startup.sh && python /app/worker/{run}",
-                f"ntpd -g && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
+                f"ntpd -g && {requirements} && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
             ],
             endpoint_spec={
                 'Ports': [
@@ -545,6 +550,7 @@ class Workers:
         env: dict = {},
         mounts: list = None,
         request_ports: dict = {},
+        requirements='',
     ):
         """Start a Python worker service in the Docker swarm.
 
@@ -655,6 +661,11 @@ class Workers:
                     )
                 )
 
+        if requirements:
+            requirements = f"pip install --root-user-action=ignore {' '.join(requirements)}"
+        else:
+            requirements = 'echo'
+
         service = self.swarm.client.services.create(
             image=f"dunderlab/python312:{tag}",
             name=service_name,
@@ -663,7 +674,7 @@ class Workers:
             command=[
                 "/bin/bash",
                 "-c",
-                f"ntpd -g && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
+                f"ntpd -g && {requirements} && if [ -f \"/app/worker/requirements.txt\" ]; then pip install --root-user-action=ignore -r /app/worker/requirements.txt; fi && if [ -f \"/app/worker/startup.sh\" ]; then /app/worker/startup.sh; fi && python /app/worker/{run}",
             ],
             endpoint_spec={
                 'Ports': [
